@@ -51,10 +51,11 @@
                             <pre class="mb-0">{{ document.content }}</pre>
                         </div>
 
-                        <div id="metadata-{{ document.id }}" class="metadata-section" style="display: none;">
+                        <div id="metadata-{{ document.id }}" class="metadata-section mt-3" style="display: none;">
+                            <hr>
                             <h6><i class="fas fa-tags"></i> Metadata</h6>
                             {% if document.metadata_str %}
-                            <pre>{{ document.metadata_str }}</pre>
+                            <pre class="bg-light p-2 rounded">{{ document.metadata_str }}</pre>
                             {% else %}
                             <p class="text-muted">No metadata available</p>
                             {% endif %}
@@ -71,20 +72,6 @@
             <div class="col-12">
                 <nav aria-label="Document pagination">
                     <ul class="pagination justify-content-center">
-                        {% if current_page > 1 %}
-                        <li class="page-item">
-                            <a class="page-link" href="/collection/{{ collection_name }}?page=1&page_size={{ page_size }}">
-                                <i class="fas fa-angle-double-left"></i> First
-                            </a>
-                        </li>
-                        {% else %}
-                        <li class="page-item disabled">
-                            <span class="page-link">
-                                <i class="fas fa-angle-double-left"></i> First
-                            </span>
-                        </li>
-                        {% endif %}
-
                         {% if current_page > 1 %}
                         <li class="page-item">
                             <a class="page-link" href="/collection/{{ collection_name }}?page={{ current_page - 1 }}&page_size={{ page_size }}">
@@ -117,20 +104,6 @@
                         <li class="page-item disabled">
                             <span class="page-link">
                                 Next <i class="fas fa-chevron-right"></i>
-                            </span>
-                        </li>
-                        {% endif %}
-
-                        {% if current_page < total_pages %}
-                        <li class="page-item">
-                            <a class="page-link" href="/collection/{{ collection_name }}?page={{ total_pages }}&page_size={{ page_size }}">
-                                Last <i class="fas fa-angle-double-right"></i>
-                            </a>
-                        </li>
-                        {% else %}
-                        <li class="page-item disabled">
-                            <span class="page-link">
-                                Last <i class="fas fa-angle-double-right"></i>
                             </span>
                         </li>
                         {% endif %}

@@ -26,7 +26,6 @@ import uvicorn
 # Global variables for the web app
 app = FastAPI(title="ChromaDB Viewer", description="Web-based viewer for local Chroma databases")
 chroma_client = None
-collections_cache = []
 db_path = None
 
 # Setup templates and static files
@@ -38,15 +37,11 @@ class ChromaViewer:
     @staticmethod
     def connect(db_path_str: str) -> bool:
         """Connect to the Chroma database"""
-        global chroma_client, collections_cache, db_path
+        global chroma_client, db_path
 
         try:
             db_path = Path(db_path_str)
             chroma_client = chromadb.PersistentClient(path=str(db_path))
-
-                # Get all collections
-            collections_data = chroma_client.list_collections()
-            collections_cache = [chroma_client.get_collection(name=col.name) for col in collections_data]
 
             return True
         except Exception as e:
@@ -57,8 +52,10 @@ class ChromaViewer:
     def get_collections() -> List[Dict[str, Any]]:
         """Get all collections with their metadata"""
         collections_data = []
-        for collection in collections_cache:
+        collections_list = chroma_client.list_collections()
+        for col_info in collections_list:
             try:
+                collection = chroma_client.get_collection(name=col_info.name)
                 doc_count = collection.count()
                 collections_data.append({
                     "name": collection.name,
@@ -66,7 +63,7 @@ class ChromaViewer:
                 })
             except Exception as e:
                 collections_data.append({
-                    "name": collection.name,
+                    "name": col_info.name,
                     "document_count": 0,
                     "error": str(e)
                 })
@@ -76,15 +73,8 @@ class ChromaViewer:
     def get_collection_documents(collection_name: str, page: int = 1, page_size: int = 10) -> Dict[str, Any]:
         """Get documents from a specific collection with pagination"""
         try:
-            # Find the collection
-            collection = None
-            for col in collections_cache:
-                if col.name == collection_name:
-                    collection = col
-                    break
-
-            if not collection:
-                raise HTTPException(status_code=404, detail="Collection not found")
+            # Get the collection
+            collection = chroma_client.get_collection(name=collection_name)
 
             # Get all documents
             results = collection.get(include=['documents', 'metadatas'])
