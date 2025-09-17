@@ -224,7 +224,7 @@ async def view_collection(request: Request, collection_name: str, page: int = Qu
     if not chroma_client:
         return templates.TemplateResponse("error.html", {
             "request": request,
-            "error": "Database not connected. Please restart the application."
+            "error": "Database not connected. Please reconnect."
         })
 
     documents_data = ChromaViewer.get_collection_documents(collection_name, page, page_size)
@@ -533,9 +533,25 @@ def create_html_templates():
             <div class="col-12">
                 <nav aria-label="Document pagination">
                     <ul class="pagination justify-content-center">
+                        <!-- First page button -->
                         {% if current_page > 1 %}
                         <li class="page-item">
-                            <a class="page-link" href="/collection/{{ collection_name }}?page={{ current_page - 1 }}&page_size={{ page_size }}">
+                            <a class="page-link" href="/collection/{{ collection_name }}?page=1&page_size={{ page_size }}" title="First page">
+                                <i class="fas fa-angle-double-left"></i> First
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">
+                                <i class="fas fa-angle-double-left"></i> First
+                            </span>
+                        </li>
+                        {% endif %}
+
+                        <!-- Previous page button -->
+                        {% if current_page > 1 %}
+                        <li class="page-item">
+                            <a class="page-link" href="/collection/{{ collection_name }}?page={{ current_page - 1 }}&page_size={{ page_size }}" title="Previous page">
                                 <i class="fas fa-chevron-left"></i> Previous
                             </a>
                         </li>
@@ -547,6 +563,7 @@ def create_html_templates():
                         </li>
                         {% endif %}
 
+                        <!-- Page numbers -->
                         {% for page_num in range(max(1, current_page - 2), min(total_pages + 1, current_page + 3)) %}
                         <li class="page-item {% if page_num == current_page %}active{% endif %}">
                             <a class="page-link" href="/collection/{{ collection_name }}?page={{ page_num }}&page_size={{ page_size }}">
@@ -555,9 +572,10 @@ def create_html_templates():
                         </li>
                         {% endfor %}
 
+                        <!-- Next page button -->
                         {% if current_page < total_pages %}
                         <li class="page-item">
-                            <a class="page-link" href="/collection/{{ collection_name }}?page={{ current_page + 1 }}&page_size={{ page_size }}">
+                            <a class="page-link" href="/collection/{{ collection_name }}?page={{ current_page + 1 }}&page_size={{ page_size }}" title="Next page">
                                 Next <i class="fas fa-chevron-right"></i>
                             </a>
                         </li>
@@ -565,6 +583,21 @@ def create_html_templates():
                         <li class="page-item disabled">
                             <span class="page-link">
                                 Next <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </li>
+                        {% endif %}
+
+                        <!-- Last page button -->
+                        {% if current_page < total_pages %}
+                        <li class="page-item">
+                            <a class="page-link" href="/collection/{{ collection_name }}?page={{ total_pages }}&page_size={{ page_size }}" title="Last page">
+                                Last <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">
+                                Last <i class="fas fa-angle-double-right"></i>
                             </span>
                         </li>
                         {% endif %}
