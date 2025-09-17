@@ -14,9 +14,14 @@
             <span class="navbar-brand mb-0 h1">
                 <i class="fas fa-database"></i> ChromaDB Viewer
             </span>
-            <a href="/" class="btn btn-outline-light btn-sm">
-                <i class="fas fa-arrow-left"></i> Back to Collections
-            </a>
+            <div class="d-flex gap-2">
+                <a href="/" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-arrow-left"></i> Back to Collections
+                </a>
+                <button class="btn btn-outline-light btn-sm" id="disconnect-btn" onclick="disconnectDatabase()">
+                    <i class="fas fa-unlink"></i> Disconnect
+                </button>
+            </div>
         </div>
     </nav>
 

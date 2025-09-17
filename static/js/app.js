@@ -17,6 +17,40 @@ function toggleMetadata(docId) {
     }
 }
 
+async function disconnectDatabase() {
+    const disconnectBtn = document.getElementById('disconnect-btn');
+    
+    // Show loading state
+    disconnectBtn.disabled = true;
+    disconnectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Disconnecting...';
+    
+    try {
+        const response = await fetch('/api/disconnect', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Redirect to connection page
+            window.location.href = '/';
+        } else {
+            alert('Error: ' + (data.detail || 'Failed to disconnect'));
+            // Reset button state
+            disconnectBtn.disabled = false;
+            disconnectBtn.innerHTML = '<i class="fas fa-unlink"></i> Disconnect';
+        }
+    } catch (error) {
+        alert('Network error: ' + error.message);
+        // Reset button state
+        disconnectBtn.disabled = false;
+        disconnectBtn.innerHTML = '<i class="fas fa-unlink"></i> Disconnect';
+    }
+}
+
 // Auto-hide alerts after 5 seconds
 document.addEventListener('DOMContentLoaded', function() {
     const alerts = document.querySelectorAll('.alert');

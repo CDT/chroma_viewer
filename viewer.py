@@ -49,6 +49,19 @@ class ChromaViewer:
             return False
 
     @staticmethod
+    def disconnect() -> bool:
+        """Disconnect from the current database"""
+        global chroma_client, db_path
+
+        try:
+            chroma_client = None
+            db_path = None
+            return True
+        except Exception as e:
+            print(f"Error during disconnect: {e}")
+            return False
+
+    @staticmethod
     def get_collections() -> List[Dict[str, Any]]:
         """Get all collections with their metadata"""
         collections_data = []
@@ -141,11 +154,10 @@ class ChromaViewer:
 # API Routes
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    """Main page showing collections"""
+    """Main page showing connection form or collections"""
     if not chroma_client:
-        return templates.TemplateResponse("error.html", {
-            "request": request,
-            "error": "Database not connected. Please restart the application."
+        return templates.TemplateResponse("connection.html", {
+            "request": request
         })
 
     collections = ChromaViewer.get_collections()
@@ -154,6 +166,48 @@ async def home(request: Request):
         "collections": collections,
         "db_path": str(db_path)
     })
+
+
+@app.post("/api/connect", response_class=JSONResponse)
+async def connect_database(request: Request):
+    """API endpoint to connect to a database"""
+    body = await request.json()
+    db_path_str = body.get("db_path", "").strip()
+    
+    if not db_path_str:
+        raise HTTPException(status_code=400, detail="Database path is required")
+    
+    db_path = Path(db_path_str)
+    if not db_path.exists():
+        raise HTTPException(status_code=400, detail=f"Database path '{db_path}' does not exist")
+    
+    if not db_path.is_dir():
+        raise HTTPException(status_code=400, detail=f"'{db_path}' is not a directory")
+    
+    # Check if it looks like a Chroma database
+    chroma_files = ['chroma.sqlite3', 'header.bin']
+    has_chroma_files = any((db_path / f).exists() for f in chroma_files)
+    
+    if not has_chroma_files:
+        raise HTTPException(status_code=400, detail=f"'{db_path}' doesn't appear to contain Chroma database files")
+    
+    # Try to connect
+    if ChromaViewer.connect(db_path_str):
+        return {"success": True, "message": f"Successfully connected to database at {db_path}"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to connect to database")
+
+
+@app.post("/api/disconnect", response_class=JSONResponse)
+async def disconnect_database():
+    """API endpoint to disconnect from the current database"""
+    if not chroma_client:
+        raise HTTPException(status_code=400, detail="No database connection to disconnect")
+    
+    if ChromaViewer.disconnect():
+        return {"success": True, "message": "Successfully disconnected from database"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to disconnect from database")
 
 
 @app.get("/api/collections", response_class=JSONResponse)
@@ -208,6 +262,93 @@ def create_directories():
 def create_html_templates():
     """Create HTML templates for the web interface"""
 
+    # Database connection page template
+    connection_html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChromaDB Viewer - Connect to Database</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class="fas fa-database"></i> ChromaDB Viewer
+            </span>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="card">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-database fa-3x text-primary mb-3"></i>
+                            <h2>Connect to ChromaDB</h2>
+                            <p class="text-muted">Enter the path to your local ChromaDB database directory</p>
+                        </div>
+
+                        <div id="error-alert" class="alert alert-danger d-none" role="alert">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span id="error-message"></span>
+                        </div>
+
+                        <div id="success-alert" class="alert alert-success d-none" role="alert">
+                            <i class="fas fa-check-circle"></i>
+                            <span id="success-message"></span>
+                        </div>
+
+                        <div id="saved-path-alert" class="alert alert-info d-none" role="alert">
+                            <i class="fas fa-info-circle"></i>
+                            <span id="saved-path-message"></span>
+                        </div>
+
+                        <form id="connect-form">
+                            <div class="mb-3">
+                                <label for="db-path" class="form-label">
+                                    <i class="fas fa-folder"></i> Database Path
+                                </label>
+                                <input type="text" class="form-control" id="db-path" name="db_path" 
+                                       placeholder="e.g., /path/to/chroma/db or ./chroma_db" required>
+                                <div class="form-text">
+                                    Path to the directory containing your ChromaDB files (chroma.sqlite3, etc.)
+                                </div>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg" id="connect-btn">
+                                    <i class="fas fa-plug"></i> Connect to Database
+                                </button>
+                            </div>
+                        </form>
+
+                        <div class="text-center mt-4">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i>
+                                The database directory should contain ChromaDB files like chroma.sqlite3
+                            </small>
+                            <div class="mt-2">
+                                <small id="clear-path-link" class="text-primary" style="cursor: pointer; display: none;" onclick="clearSavedPath()">
+                                    <i class="fas fa-times"></i> Clear saved path
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/connection.js"></script>
+</body>
+</html>"""
+
     # Collections page template
     collections_html = """<!DOCTYPE html>
 <html lang="en">
@@ -225,7 +366,12 @@ def create_html_templates():
             <span class="navbar-brand mb-0 h1">
                 <i class="fas fa-database"></i> ChromaDB Viewer
             </span>
-            <small class="text-light">Database: {{ db_path }}</small>
+            <div class="d-flex align-items-center">
+                <small class="text-light me-3">Database: {{ db_path }}</small>
+                <button class="btn btn-outline-light btn-sm" id="disconnect-btn" onclick="disconnectDatabase()">
+                    <i class="fas fa-unlink"></i> Disconnect
+                </button>
+            </div>
         </div>
     </nav>
 
@@ -269,6 +415,41 @@ def create_html_templates():
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        async function disconnectDatabase() {
+            const disconnectBtn = document.getElementById('disconnect-btn');
+            
+            // Show loading state
+            disconnectBtn.disabled = true;
+            disconnectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Disconnecting...';
+            
+            try {
+                const response = await fetch('/api/disconnect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Redirect to connection page
+                    window.location.href = '/';
+                } else {
+                    alert('Error: ' + (data.detail || 'Failed to disconnect'));
+                    // Reset button state
+                    disconnectBtn.disabled = false;
+                    disconnectBtn.innerHTML = '<i class="fas fa-unlink"></i> Disconnect';
+                }
+            } catch (error) {
+                alert('Network error: ' + error.message);
+                // Reset button state
+                disconnectBtn.disabled = false;
+                disconnectBtn.innerHTML = '<i class="fas fa-unlink"></i> Disconnect';
+            }
+        }
+    </script>
 </body>
 </html>"""
 
@@ -289,9 +470,14 @@ def create_html_templates():
             <span class="navbar-brand mb-0 h1">
                 <i class="fas fa-database"></i> ChromaDB Viewer
             </span>
-            <a href="/" class="btn btn-outline-light btn-sm">
-                <i class="fas fa-arrow-left"></i> Back to Collections
-            </a>
+            <div class="d-flex gap-2">
+                <a href="/" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-arrow-left"></i> Back to Collections
+                </a>
+                <button class="btn btn-outline-light btn-sm" id="disconnect-btn" onclick="disconnectDatabase()">
+                    <i class="fas fa-unlink"></i> Disconnect
+                </button>
+            </div>
         </div>
     </nav>
 
@@ -444,6 +630,9 @@ def create_html_templates():
 </html>"""
 
     # Write templates to files
+    with open("templates/connection.html", "w") as f:
+        f.write(connection_html)
+
     with open("templates/collections.html", "w") as f:
         f.write(collections_html)
 
@@ -548,6 +737,40 @@ function toggleMetadata(docId) {
     }
 }
 
+async function disconnectDatabase() {
+    const disconnectBtn = document.getElementById('disconnect-btn');
+    
+    // Show loading state
+    disconnectBtn.disabled = true;
+    disconnectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Disconnecting...';
+    
+    try {
+        const response = await fetch('/api/disconnect', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Redirect to connection page
+            window.location.href = '/';
+        } else {
+            alert('Error: ' + (data.detail || 'Failed to disconnect'));
+            // Reset button state
+            disconnectBtn.disabled = false;
+            disconnectBtn.innerHTML = '<i class="fas fa-unlink"></i> Disconnect';
+        }
+    } catch (error) {
+        alert('Network error: ' + error.message);
+        // Reset button state
+        disconnectBtn.disabled = false;
+        disconnectBtn.innerHTML = '<i class="fas fa-unlink"></i> Disconnect';
+    }
+}
+
 // Auto-hide alerts after 5 seconds
 document.addEventListener('DOMContentLoaded', function() {
     const alerts = document.querySelectorAll('.alert');
@@ -563,12 +786,138 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });"""
 
+    # Connection JavaScript file
+    connection_js_content = """// JavaScript for database connection page
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('connect-form');
+    const connectBtn = document.getElementById('connect-btn');
+    const errorAlert = document.getElementById('error-alert');
+    const successAlert = document.getElementById('success-alert');
+    const savedPathAlert = document.getElementById('saved-path-alert');
+    const errorMessage = document.getElementById('error-message');
+    const successMessage = document.getElementById('success-message');
+    const savedPathMessage = document.getElementById('saved-path-message');
+    const dbPathInput = document.getElementById('db-path');
+
+    // Load saved path from localStorage
+    const savedPath = localStorage.getItem('chromadb_path');
+    if (savedPath) {
+        dbPathInput.value = savedPath;
+        savedPathMessage.textContent = 'Using previously saved database path';
+        savedPathAlert.classList.remove('d-none');
+        
+        // Show clear path link
+        const clearPathLink = document.getElementById('clear-path-link');
+        clearPathLink.style.display = 'block';
+        
+        // Auto-hide the saved path alert after 3 seconds
+        setTimeout(() => {
+            savedPathAlert.style.opacity = '0.7';
+            setTimeout(() => {
+                savedPathAlert.classList.add('d-none');
+                savedPathAlert.style.opacity = '1';
+            }, 300);
+        }, 3000);
+    }
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const dbPath = dbPathInput.value.trim();
+        
+        if (!dbPath) {
+            showError('Please enter a database path');
+            return;
+        }
+
+        // Show loading state
+        connectBtn.disabled = true;
+        connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
+        hideAlerts();
+
+        try {
+            const response = await fetch('/api/connect', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ db_path: dbPath })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Save the successful path to localStorage
+                localStorage.setItem('chromadb_path', dbPath);
+                
+                showSuccess(data.message);
+                // Redirect to collections page after a short delay
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1500);
+            } else {
+                showError(data.detail || 'Failed to connect to database');
+            }
+        } catch (error) {
+            showError('Network error: ' + error.message);
+        } finally {
+            // Reset button state
+            connectBtn.disabled = false;
+            connectBtn.innerHTML = '<i class="fas fa-plug"></i> Connect to Database';
+        }
+    });
+
+    function showError(message) {
+        errorMessage.textContent = message;
+        errorAlert.classList.remove('d-none');
+        successAlert.classList.add('d-none');
+    }
+
+    function showSuccess(message) {
+        successMessage.textContent = message;
+        successAlert.classList.remove('d-none');
+        errorAlert.classList.add('d-none');
+    }
+
+    function hideAlerts() {
+        errorAlert.classList.add('d-none');
+        successAlert.classList.add('d-none');
+        savedPathAlert.classList.add('d-none');
+    }
+
+    // Global function to clear saved path
+    window.clearSavedPath = function() {
+        localStorage.removeItem('chromadb_path');
+        dbPathInput.value = '';
+        const clearPathLink = document.getElementById('clear-path-link');
+        clearPathLink.style.display = 'none';
+        savedPathAlert.classList.add('d-none');
+        
+        // Show confirmation
+        savedPathMessage.textContent = 'Saved path cleared';
+        savedPathAlert.classList.remove('d-none');
+        savedPathAlert.classList.remove('alert-info');
+        savedPathAlert.classList.add('alert-success');
+        
+        // Auto-hide after 2 seconds
+        setTimeout(() => {
+            savedPathAlert.classList.add('d-none');
+            savedPathAlert.classList.remove('alert-success');
+            savedPathAlert.classList.add('alert-info');
+        }, 2000);
+    };
+});"""
+
     # Write static files
     with open("static/css/style.css", "w") as f:
         f.write(css_content)
 
     with open("static/js/app.js", "w") as f:
         f.write(js_content)
+
+    with open("static/js/connection.js", "w") as f:
+        f.write(connection_js_content)
 
 
 def main():
@@ -577,9 +926,10 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python viewer.py /path/to/chroma/db
-  python viewer.py ./chroma_db
-  python viewer.py ../my_project/data/chroma
+  python viewer.py                           # Start with connection UI
+  python viewer.py /path/to/chroma/db        # Connect directly to database
+  python viewer.py ./chroma_db               # Connect to local database
+  python viewer.py ../my_project/data/chroma # Connect to relative path
 
 The web interface will be available at: http://localhost:8000
         """
@@ -587,7 +937,8 @@ The web interface will be available at: http://localhost:8000
 
     parser.add_argument(
         "db_path",
-        help="Path to the local Chroma database directory"
+        nargs="?",  # Make db_path optional
+        help="Path to the local Chroma database directory (optional)"
     )
 
     parser.add_argument(
@@ -605,39 +956,43 @@ The web interface will be available at: http://localhost:8000
 
     args = parser.parse_args()
 
-    # Validate database path
-    db_path = Path(args.db_path)
-    if not db_path.exists():
-        print(f"Error: Database path '{db_path}' does not exist.")
-        sys.exit(1)
-
-    if not db_path.is_dir():
-        print(f"Error: '{db_path}' is not a directory.")
-        sys.exit(1)
-
-    # Check if it looks like a Chroma database
-    chroma_files = ['chroma.sqlite3', 'header.bin']
-    has_chroma_files = any((db_path / f).exists() for f in chroma_files)
-
-    if not has_chroma_files:
-        print(f"Warning: '{db_path}' doesn't appear to contain Chroma database files.")
-        response = input("Continue anyway? (y/N): ")
-        if response.lower() not in ['y', 'yes']:
-            sys.exit(0)
-
     # Create necessary directories and files
     print("Setting up web interface...")
     create_directories()
     create_html_templates()
     create_static_files()
 
-    # Connect to database
-    print(f"Connecting to Chroma database at: {db_path}")
-    if not ChromaViewer.connect(str(db_path)):
-        print("Failed to connect to database. Exiting.")
-        sys.exit(1)
+    # Connect to database if path provided
+    if args.db_path:
+        db_path = Path(args.db_path)
+        if not db_path.exists():
+            print(f"Error: Database path '{db_path}' does not exist.")
+            sys.exit(1)
 
-    print(f"✓ Connected successfully. Starting web server at http://{args.host}:{args.port}")
+        if not db_path.is_dir():
+            print(f"Error: '{db_path}' is not a directory.")
+            sys.exit(1)
+
+        # Check if it looks like a Chroma database
+        chroma_files = ['chroma.sqlite3', 'header.bin']
+        has_chroma_files = any((db_path / f).exists() for f in chroma_files)
+
+        if not has_chroma_files:
+            print(f"Warning: '{db_path}' doesn't appear to contain Chroma database files.")
+            response = input("Continue anyway? (y/N): ")
+            if response.lower() not in ['y', 'yes']:
+                sys.exit(0)
+
+        # Connect to database
+        print(f"Connecting to Chroma database at: {db_path}")
+        if not ChromaViewer.connect(str(db_path)):
+            print("Failed to connect to database. Exiting.")
+            sys.exit(1)
+        print(f"✓ Connected successfully.")
+    else:
+        print("No database path provided. You can connect via the web interface.")
+
+    print(f"Starting web server at http://{args.host}:{args.port}")
     print("Press Ctrl+C to stop the server.")
 
     # Start the web server
