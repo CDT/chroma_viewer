@@ -10,10 +10,45 @@
     overflow-y: auto;
 }
 
+.metadata-section {
+    border-top: 1px solid #dee2e6;
+    padding-top: 1rem;
+    margin-top: 1rem;
+}
+
+.metadata-section h6 {
+    color: #6c757d;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+}
+
 .metadata-section pre {
-    font-size: 0.8em;
-    max-height: 200px;
+    font-family: 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    max-height: 250px;
     overflow-y: auto;
+    border: 1px solid #e9ecef;
+    border-radius: 0.375rem;
+    background-color: #f8f9fa !important;
+    color: #212529;
+    padding: 1rem;
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.metadata-section .text-muted {
+    font-style: italic;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 0.375rem;
+    text-align: center;
+    color: #6c757d;
+    margin: 0;
 }
 
 .card {
@@ -62,8 +97,24 @@
         color: #e2e8f0;
     }
 
+    .metadata-section {
+        border-top-color: #4a5568;
+    }
+
+    .metadata-section h6 {
+        color: #a0aec0;
+    }
+
     .metadata-section pre {
-        background-color: #1a202c;
+        background-color: #1a202c !important;
         color: #e2e8f0;
+        border-color: #4a5568;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15);
+    }
+
+    .metadata-section .text-muted {
+        background-color: #2d3748;
+        border-color: #4a5568;
+        color: #a0aec0;
     }
 }
