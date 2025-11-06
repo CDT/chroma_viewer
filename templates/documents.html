@@ -46,9 +46,16 @@
                                 <i class="fas fa-hashtag"></i> Document #{{ document.index }}
                                 <small class="text-muted">({{ document.id }})</small>
                             </h6>
-                            <button class="btn btn-sm btn-outline-primary" onclick="toggleMetadata('{{ document.id }}')">
-                                <i class="fas fa-info-circle"></i> Metadata
-                            </button>
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-sm btn-outline-primary" onclick="toggleMetadata('{{ document.id }}')">
+                                    <i class="fas fa-info-circle"></i> Metadata
+                                </button>
+                                {% if document.embedding %}
+                                <button class="btn btn-sm btn-outline-success" onclick="toggleEmbedding('{{ document.id }}')">
+                                    <i class="fas fa-vector-square"></i> Embedding
+                                </button>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">
@@ -65,6 +72,51 @@
                             <p class="text-muted">No metadata available</p>
                             {% endif %}
                         </div>
+
+                        {% if document.embedding %}
+                        <div id="embedding-{{ document.id }}" class="embedding-section mt-3" style="display: none;">
+                            <hr>
+                            <h6><i class="fas fa-vector-square"></i> Embedding Vector</h6>
+                            <div class="embedding-info mb-3">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <small class="text-muted">Dimensions:</small>
+                                        <span class="badge bg-info">{{ document.embedding.dimensions }}</span>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted">Magnitude:</small>
+                                        <span class="badge bg-secondary">{{ "%.4f"|format(document.embedding.magnitude) }}</span>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <button class="btn btn-sm btn-outline-info" onclick="toggleFullEmbedding('{{ document.id }}')">
+                                            <i class="fas fa-expand"></i> <span id="toggle-text-{{ document.id }}">Show Full Vector</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="embedding-preview">
+                                <h6 class="small text-muted">Preview (first 10 dimensions):</h6>
+                                <div class="embedding-values">
+                                    {% for value in document.embedding.preview %}
+                                    <span class="embedding-value" data-value="{{ value }}">{{ "%.4f"|format(value) }}</span>
+                                    {% endfor %}
+                                    {% if document.embedding.dimensions > 10 %}
+                                    <span class="text-muted">... ({{ document.embedding.dimensions - 10 }} more)</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div id="full-embedding-{{ document.id }}" class="full-embedding mt-3" style="display: none;">
+                                <h6 class="small text-muted">Full Vector:</h6>
+                                <div class="embedding-full-values">
+                                    {% for value in document.embedding.vector %}
+                                    <span class="embedding-value" data-value="{{ value }}">{{ "%.4f"|format(value) }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>

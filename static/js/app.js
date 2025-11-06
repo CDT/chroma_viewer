@@ -17,6 +17,39 @@ function toggleMetadata(docId) {
     }
 }
 
+function toggleEmbedding(docId) {
+    const embeddingSection = document.getElementById(`embedding-${docId}`);
+    const button = event.target.closest('button');
+
+    if (embeddingSection.style.display === 'none' || embeddingSection.style.display === '') {
+        embeddingSection.style.display = 'block';
+        button.innerHTML = '<i class="fas fa-times"></i> Hide Embedding';
+        button.classList.remove('btn-outline-success');
+        button.classList.add('btn-outline-secondary');
+    } else {
+        embeddingSection.style.display = 'none';
+        button.innerHTML = '<i class="fas fa-vector-square"></i> Embedding';
+        button.classList.remove('btn-outline-secondary');
+        button.classList.add('btn-outline-success');
+    }
+}
+
+function toggleFullEmbedding(docId) {
+    const fullEmbeddingSection = document.getElementById(`full-embedding-${docId}`);
+    const toggleText = document.getElementById(`toggle-text-${docId}`);
+    const button = event.target.closest('button');
+
+    if (fullEmbeddingSection.style.display === 'none' || fullEmbeddingSection.style.display === '') {
+        fullEmbeddingSection.style.display = 'block';
+        toggleText.textContent = 'Hide Full Vector';
+        button.innerHTML = '<i class="fas fa-compress"></i> <span id="toggle-text-' + docId + '">Hide Full Vector</span>';
+    } else {
+        fullEmbeddingSection.style.display = 'none';
+        toggleText.textContent = 'Show Full Vector';
+        button.innerHTML = '<i class="fas fa-expand"></i> <span id="toggle-text-' + docId + '">Show Full Vector</span>';
+    }
+}
+
 async function disconnectDatabase() {
     const disconnectBtn = document.getElementById('disconnect-btn');
     

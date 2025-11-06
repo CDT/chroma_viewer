@@ -89,11 +89,11 @@ class ChromaViewer:
             # Get the collection
             collection = chroma_client.get_collection(name=collection_name)
 
-            # Get all documents
-            results = collection.get(include=['documents', 'metadatas'])
+            # Get all documents including embeddings
+            results = collection.get(include=['documents', 'metadatas', 'embeddings'])
             # IDs are returned by default in ChromaDB results
 
-            if not results['documents']:
+            if not results['documents'] or len(results['documents']) == 0:
                 return {
                     "collection_name": collection_name,
                     "documents": [],
@@ -105,6 +105,7 @@ class ChromaViewer:
 
             documents = results['documents']
             metadatas = results.get('metadatas', [])
+            embeddings = results.get('embeddings', [])
             # IDs are always available in ChromaDB results
             ids = results.get('ids', list(range(len(documents))))
 
@@ -125,7 +126,18 @@ class ChromaViewer:
             for idx in range(start_idx, end_idx):
                 doc_id = ids[idx] if idx < len(ids) else f"doc_{idx}"
                 content = documents[idx]
-                metadata = metadatas[idx] if idx < len(metadatas) and metadatas[idx] else {}
+                metadata = metadatas[idx] if idx < len(metadatas) and metadatas[idx] is not None else {}
+                embedding = embeddings[idx] if idx < len(embeddings) and embeddings[idx] is not None else None
+
+                # Format embedding for display
+                embedding_info = None
+                if embedding is not None and len(embedding) > 0:
+                    embedding_info = {
+                        "vector": embedding,
+                        "dimensions": len(embedding),
+                        "preview": embedding[:10] if len(embedding) > 10 else embedding,  # First 10 dimensions
+                        "magnitude": sum(x*x for x in embedding) ** 0.5  # L2 norm
+                    }
 
                 page_documents.append({
                     "index": idx + 1,  # 1-based indexing
@@ -133,7 +145,8 @@ class ChromaViewer:
                     "content": content,
                     "content_preview": content[:200] + "..." if len(content) > 200 else content,
                     "metadata": metadata,
-                    "metadata_str": json.dumps(metadata, indent=2) if metadata else ""
+                    "metadata_str": json.dumps(metadata, indent=2) if metadata else "",
+                    "embedding": embedding_info
                 })
 
             return {
